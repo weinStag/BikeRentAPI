@@ -7,6 +7,7 @@ import { BikeResolver } from 'src/bike/bike.resolver';
 import { UserRepository } from 'src/user/repository/user.repository';
 import { CryptService } from 'src/crypt/crypt.service';
 import { BikeRepository } from 'src/bike/repository/bike.repository';
+import { PricingService } from './service/pricing.service';
 
 @Module({
   providers: [
@@ -18,6 +19,7 @@ import { BikeRepository } from 'src/bike/repository/bike.repository';
     UserRepository,
     CryptService,
     BikeRepository,
+    PricingService,
   ],
 })
 export class RentModule {}

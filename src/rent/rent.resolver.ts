@@ -6,6 +6,7 @@ import { RentSchema } from './schema/rent.schema';
 import { BikeResolver } from 'src/bike/bike.resolver';
 import { UnavailableBikeError } from 'src/errors/unavailable-bike-error';
 import { RentNotFoundError } from 'src/errors/rent-not-found-error';
+import { PricingService } from './service/pricing.service';
 
 @Resolver()
 export class RentResolver {
@@ -13,6 +14,7 @@ export class RentResolver {
     private rentRepository: RentRepository,
     private userResolver: UserResolver,
     private bikeResolver: BikeResolver,
+    private pricingService: PricingService,
   ) {}
 
   @Mutation(() => RentSchema)
@@ -43,8 +45,7 @@ export class RentResolver {
     await this.rentRepository.update(rent);
     rent.bike.available = true;
     await this.bikeResolver.updateBike(rent.bike);
-    const hours = this.diffHours(rent.endDate, rent.startDate);
-    return hours * rent.bike.valuePerHour;
+    return this.pricingService.calculateRentAmount(rent.startDate, rent.endDate, rent.bike.valuePerHour);
   }
 
   @Query(() => RentSchema)
@@ -76,11 +77,5 @@ export class RentResolver {
   @Mutation(() => RentSchema)
   async removeRentByID(@Args('id', { type: () => String }) id: string): Promise<void> {
     await this.rentRepository.remove(id);
-  }
-
-  diffHours(dt2: Date, dt1: Date) {
-    let diff = (dt2.getTime() - dt1.getTime()) / 1000;
-    diff /= 60 * 60;
-    return Math.abs(diff);
   }
 }
