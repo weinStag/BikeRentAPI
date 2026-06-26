@@ -5,6 +5,11 @@
 /postgresql_data
 /migrations
 
+# Environment — NEVER commit credentials
+.env
+.env.*
+!.env.example
+
 # Logs
 logs
 *.log

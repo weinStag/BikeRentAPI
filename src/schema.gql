@@ -185,22 +185,23 @@ type Mutation {
   addStation(station: stationInput!): StationSchema!
   addStationType(stn_typ: StationTypeInput!): StationTypeSchema!
   addType(type: typeInput!): typeSchema!
-  registerBike(bike: BikeInput!): BikeSchema!
+  rateRental(comment: String, rating: Float!, rentId: String!): RentSchema!
+  registerBike(bike: BikeInput!): BikeSchema
   registerUser(user: userInput!): userSchema!
-  removeBikeByID(id: String!): BikeSchema!
+  removeBikeByID(id: String!): BikeSchema
   removeBikeImages(id: String!): BikeImagesSchema!
   removeMaintenance(id: String!): MaintenanceSchema!
-  removeRentByID(id: String!): RentSchema!
+  removeRentByID(id: String!): RentSchema
   removeStationByID(id: String!): StationSchema!
   removeStn_typByID(id: String!, typ_id: String!): StationTypeSchema!
   removeTypeByID(id: String!): typeSchema!
-  removeUserByEmail(email: String!): userSchema!
+  removeUserByEmail(email: String!): userSchema
   rentBike(bikeId: String!, stationId: String!, userId: String!): RentSchema!
   returnBike(bikeId: String!, userId: String!): RentSchema!
-  updateBike(bike: BikeInput!): BikeSchema!
+  updateBike(bike: BikeInput!): BikeSchema
   updateBikeImages(bikeimage: BikeImagesInput!): BikeImagesSchema!
   updateMaintenance(maintenance: MaintenanceInput!): MaintenanceSchema!
-  updateRent(rent: RentInput!): RentSchema!
+  updateRent(rent: RentInput!): RentSchema
   updateStation(station: stationInput!): StationSchema!
   updateStn_typ(stn_typ: StationTypeInput!): StationTypeSchema!
   updateType(type: typeInput!): typeSchema!
@@ -401,7 +402,7 @@ input userInput {
   email: String!
 
   """user ID"""
-  id: String!
+  id: String
 
   """user name"""
   name: String!

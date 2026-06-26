@@ -12,11 +12,11 @@ export class BikeRepository {
   }
 
   public async add(bike: BikeInput): Promise<void> {
-    this.prismaService.bike.create({ data: bike });
+    await this.prismaService.bike.create({ data: bike });
   }
 
   public async remove(id: string): Promise<void> {
-    this.prismaService.bike.delete({ where: { id } });
+    await this.prismaService.bike.delete({ where: { id } });
   }
 
   public async list(): Promise<BikeSchema[]> {
@@ -24,6 +24,6 @@ export class BikeRepository {
   }
 
   public async update(bikeNew: BikeInput): Promise<void> {
-    this.prismaService.bike.update({ where: { id: bikeNew.id }, data: bikeNew });
+    await this.prismaService.bike.update({ where: { id: bikeNew.id }, data: bikeNew });
   }
 }

@@ -15,14 +15,14 @@ export class BikeResolver {
     return bike;
   }
 
-  @Mutation(() => BikeSchema)
+  @Mutation(() => BikeSchema, { nullable: true })
   async registerBike(@Args('bike', { type: () => BikeInput }) bike: BikeInput): Promise<void> {
-    this.bikeRepository.add(bike);
+    await this.bikeRepository.add(bike);
   }
 
-  @Mutation(() => BikeSchema)
+  @Mutation(() => BikeSchema, { nullable: true })
   async removeBikeByID(@Args('id', { type: () => String }) id: string): Promise<void> {
-    this.bikeRepository.remove(id);
+    await this.bikeRepository.remove(id);
   }
 
   @Query(() => [BikeSchema])
@@ -30,8 +30,8 @@ export class BikeResolver {
     return this.bikeRepository.list();
   }
 
-  @Mutation(() => BikeSchema)
+  @Mutation(() => BikeSchema, { nullable: true })
   async updateBike(@Args('bike', { type: () => BikeInput }) bikeNew: BikeInput): Promise<void> {
-    this.bikeRepository.update(bikeNew);
+    await this.bikeRepository.update(bikeNew);
   }
 }

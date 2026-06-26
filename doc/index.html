@@ -362,7 +362,7 @@
        Uma API de aluguel de bikes construída com NestJS + GraphQL + Prisma,
        coberta por testes unitários rigorosos usando BVA, MCDC, Test Doubles e Teste de Mutação.</p>
     <div class="hero-badges">
-      <span class="hero-badge g"><span class="dot"></span>65 Testes — 13 Suites</span>
+      <span class="hero-badge g"><span class="dot"></span>84 Testes — 14 Suites</span>
       <span class="hero-badge b"><span class="dot"></span>100% Cobertura (PricingService)</span>
       <span class="hero-badge p"><span class="dot"></span>100% Mutation Score</span>
     </div>
@@ -553,6 +553,84 @@
           <span class="test-count">5 testes</span>
         </div>
       </div>
+
+      <!-- rateRental -->
+      <div class="flow-box">
+        <div class="flow-header">
+          <span class="fh-icon">⭐</span>
+          <h3>Avaliar Aluguel</h3>
+          <span class="fh-method">rateRental()</span>
+        </div>
+        <div class="flow-steps">
+
+          <div class="flow-step">
+            <div class="step-circle chk">1</div>
+            <div class="step-body">
+              <strong>Validar nota (BVA: 1–5)</strong>
+              <p>Intervalo válido é <code style="color:var(--blue)">[1, 5]</code> inclusive. Valores fora do intervalo — incluindo 0.9 e 5.1 — são rejeitados antes de qualquer acesso ao banco.</p>
+              <div class="step-guard">
+                <span class="guard-arrow">rating &lt; 1 ou &gt; 5</span>
+                <span class="guard-err">InvalidRatingError</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-circle chk">2</div>
+            <div class="step-body">
+              <strong>Localizar aluguel</strong>
+              <p>Busca por <code style="color:var(--blue)">rentId</code>. Retorna erro se não encontrado.</p>
+              <div class="step-guard">
+                <span class="guard-arrow">não encontrado</span>
+                <span class="guard-err">RentNotFoundError</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-circle chk">3</div>
+            <div class="step-body">
+              <strong>Verificar se aluguel está encerrado</strong>
+              <p>Só é possível avaliar após a devolução (<code style="color:var(--blue)">endDate != null</code>).</p>
+              <div class="step-guard">
+                <span class="guard-arrow">endDate = null</span>
+                <span class="guard-err">RentStillOpenError</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-circle chk">4</div>
+            <div class="step-body">
+              <strong>Verificar avaliação dupla</strong>
+              <p>Cada aluguel pode ser avaliado apenas uma vez.</p>
+              <div class="step-guard">
+                <span class="guard-arrow">ratingValue &gt; 0</span>
+                <span class="guard-err">RentAlreadyRatedError</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-step">
+            <div class="step-circle ok">5</div>
+            <div class="step-body">
+              <strong>Persistir avaliação</strong>
+              <p>Grava <code style="color:var(--blue)">ratingValue</code> e <code style="color:var(--blue)">ratingComment</code> no aluguel.</p>
+              <div class="step-guard">
+                <span class="guard-note">retorna o aluguel atualizado</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="flow-footer">
+          <span>Pontos de falha testados:</span>
+          <span class="test-count">7 casos BVA (nota)</span>
+          <span class="test-count">3 guards de domínio</span>
+          <span class="test-count">10 testes</span>
+        </div>
+      </div>
+
     </div>
 
     <!-- USER RULES -->
@@ -594,6 +672,26 @@
           <li>Adicional +20% em fins de semana</li>
           <li>Desconto −15% para aluguéis &gt; 8 horas</li>
           <li>Regras 3 e 4 aplicam-se simultaneamente</li>
+        </ul>
+      </div>
+
+      <div class="user-rule" style="border-color:rgba(227,179,65,.3);background:rgba(227,179,65,.04)">
+        <h3><span>⭐</span> Avaliação — <code style="font-size:12px;color:var(--orange)">rateRental()</code></h3>
+        <ul>
+          <li>Nota 1–5 estrelas com validação BVA (<span class="guard-err">InvalidRatingError</span> fora do intervalo)</li>
+          <li>Aluguel deve estar encerrado → <span class="guard-err">RentStillOpenError</span></li>
+          <li>Aluguel não pode ser reavaliado → <span class="guard-err">RentAlreadyRatedError</span></li>
+          <li>Aceita comentário textual opcional</li>
+        </ul>
+      </div>
+
+      <div class="user-rule" style="border-color:rgba(248,81,73,.3);background:rgba(248,81,73,.04)">
+        <h3><span>🛡️</span> Rate Limiting — <code style="font-size:12px;color:var(--red)">ThrottlerGuard</code></h3>
+        <ul>
+          <li>30 requisições por IP por janela de 60 segundos</li>
+          <li>Excesso retorna <strong style="color:var(--red)">HTTP 429 — Too Many Requests</strong></li>
+          <li>Aplicado globalmente via <code style="color:var(--blue)">APP_GUARD</code></li>
+          <li>Protege todos os endpoints GraphQL contra abuso</li>
         </ul>
       </div>
 
@@ -680,7 +778,7 @@
       <div class="tech-card">
         <div class="ticon">📐</div>
         <h3>BVA</h3>
-        <p>Boundary Value Analysis no <code style="color:var(--blue)">prorateHours</code>: limites exatos, just-below e just-above de cada fronteira.</p>
+        <p>Boundary Value Analysis em <code style="color:var(--blue)">prorateHours</code> e em <code style="color:var(--blue)">rateRental</code> (nota 1–5): limites exatos, just-below e just-above de cada fronteira.</p>
       </div>
       <div class="tech-card">
         <div class="ticon">🔀</div>
@@ -702,9 +800,14 @@
         <h3>Teste Estrutural</h3>
         <p>Istanbul/c8 mede cobertura de statements, branches, functions e lines. 100% no PricingService.</p>
       </div>
+      <div class="tech-card">
+        <div class="ticon">🛡️</div>
+        <h3>Rate Limiting</h3>
+        <p><code style="color:var(--blue)">@nestjs/throttler</code> protege todos os endpoints GraphQL: 30 req/min por IP. Testado via <code style="color:var(--blue)">ThrottlerException</code> (HTTP 429).</p>
+      </div>
     </div>
 
-    <!-- BVA TABLE -->
+    <!-- BVA TABLE — prorateHours -->
     <h3 style="margin-top:48px;font-size:20px;">Análise de Valor Limite — <code style="color:var(--purple)">prorateHours()</code></h3>
     <p style="margin-top:6px;">14 casos de teste mapeando todas as fronteiras da função de proration.</p>
     <div class="table-wrap">
@@ -724,6 +827,26 @@
           <tr><td><code>1 + 31/60</code></td><td>91 min</td><td>&gt; 1.5h</td><td>2.0h</td><td><span class="tag bnd">just above 1.5h</span></td><td class="check">✓</td></tr>
           <tr><td><code>8.0</code></td><td>480 min</td><td>= threshold</td><td>8h</td><td><span class="tag bnd">on-boundary desconto</span></td><td class="check">✓</td></tr>
           <tr><td><code>8 + 1/60</code></td><td>481 min</td><td>&gt; 8h</td><td>8.5h</td><td><span class="tag bnd">just above threshold</span></td><td class="check">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- BVA TABLE — rateRental -->
+    <h3 style="margin-top:48px;font-size:20px;">Análise de Valor Limite — <code style="color:var(--orange)">rateRental() · nota 1–5</code></h3>
+    <p style="margin-top:6px;">7 casos BVA cobrindo o intervalo de estrelas: mínimo, justo abaixo, justo acima, médio e máximo.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Entrada (rating)</th><th>Partição</th><th>Esperado</th><th>Tipo de Limite</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+          <tr><td><code>0</code></td><td>Inválido (&lt; 1)</td><td>InvalidRatingError</td><td><span class="tag off">abaixo do mínimo</span></td><td class="check">✓</td></tr>
+          <tr><td><code>0.9</code></td><td>Inválido (&lt; 1)</td><td>InvalidRatingError</td><td><span class="tag bnd">just below min</span></td><td class="check">✓</td></tr>
+          <tr><td><code>1</code></td><td>Válido</td><td>sucesso</td><td><span class="tag bnd">on min boundary</span></td><td class="check">✓</td></tr>
+          <tr><td><code>3</code></td><td>Válido</td><td>sucesso</td><td><span class="tag mid">midpoint</span></td><td class="check">✓</td></tr>
+          <tr><td><code>5</code></td><td>Válido</td><td>sucesso</td><td><span class="tag bnd">on max boundary</span></td><td class="check">✓</td></tr>
+          <tr><td><code>5.1</code></td><td>Inválido (&gt; 5)</td><td>InvalidRatingError</td><td><span class="tag bnd">just above max</span></td><td class="check">✓</td></tr>
+          <tr><td><code>6</code></td><td>Inválido (&gt; 5)</td><td>InvalidRatingError</td><td><span class="tag off">acima do máximo</span></td><td class="check">✓</td></tr>
         </tbody>
       </table>
     </div>
@@ -809,6 +932,41 @@
 <span class="nm">bikeResolverMock</span>.<span class="nm">findBikeByID</span>.<span class="fn">mockResolvedValue</span>({ <span class="nm">available</span>: <span class="kw">false</span> });
 <span class="kw">await</span> expect(<span class="nm">resolver</span>.<span class="fn">rentBike</span>(...)).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="st">UnavailableBikeError</span>);</pre>
     </div>
+
+    <!-- RATE LIMITER -->
+    <h3 style="margin-top:48px;font-size:20px;">Rate Limiting — <code style="color:var(--red)">ThrottlerGuard</code></h3>
+    <p style="margin-top:6px;">
+      Configurado globalmente via <code style="color:var(--blue)">APP_GUARD</code> no <code style="color:var(--blue)">AppModule</code>.
+      Limita cada IP a <strong>30 requisições por minuto</strong>; excesso retorna HTTP&nbsp;429.
+    </p>
+    <div class="code-wrap" style="margin-top:16px;">
+      <div class="code-header">
+        <div class="code-dots"><i></i><i></i><i></i></div>
+        <span>src/app.module.ts — configuração do rate limiter</span>
+      </div>
+<pre><span class="cm">// Importar e registrar globalmente</span>
+<span class="st">ThrottlerModule</span>.<span class="fn">forRoot</span>([{ <span class="nm">ttl</span>: <span class="nb">60_000</span>, <span class="nm">limit</span>: <span class="nb">30</span> }]),
+
+<span class="cm">// Ativar como guard global (todos os endpoints)</span>
+{ <span class="nm">provide</span>: <span class="st">APP_GUARD</span>, <span class="nm">useClass</span>: <span class="st">ThrottlerGuard</span> }</pre>
+    </div>
+    <div class="code-wrap" style="margin-top:16px;">
+      <div class="code-header">
+        <div class="code-dots"><i></i><i></i><i></i></div>
+        <span>test/unit/rate-limit.spec.ts — verificação do comportamento</span>
+      </div>
+<pre><span class="cm">// ThrottlerException é lançada quando o limite é excedido</span>
+<span class="kw">it</span>(<span class="st">'ThrottlerException carries HTTP 429'</span>, () => {
+  <span class="kw">const</span> <span class="nm">error</span> = <span class="kw">new</span> <span class="st">ThrottlerException</span>();
+  expect(<span class="nm">error</span>.<span class="fn">getStatus</span>()).<span class="fn">toBe</span>(<span class="nb">429</span>);
+});
+
+<span class="cm">// Guard instancia corretamente com a configuração de TTL/limit</span>
+<span class="kw">it</span>(<span class="st">'guard should be defined'</span>, () => {
+  expect(<span class="nm">guard</span>).<span class="fn">toBeDefined</span>();
+  expect(<span class="nm">guard</span>).<span class="fn">toBeInstanceOf</span>(<span class="st">ThrottlerGuard</span>);
+});</pre>
+    </div>
   </section>
 
   <!-- ════════════════════════════════════════════════ RESULTADOS -->
@@ -818,9 +976,9 @@
 
     <div class="results-grid">
       <div class="result-card green">
-        <div class="result-num">65</div>
+        <div class="result-num">84</div>
         <div class="result-label">Testes Unitários</div>
-        <div class="result-sub">13 suites · 0 falhas</div>
+        <div class="result-sub">14 suites · 0 falhas</div>
       </div>
       <div class="result-card blue">
         <div class="result-num">100%</div>
@@ -936,7 +1094,7 @@
       <a class="report-card" href="test-report/report.html">
         <div class="ricon">📋</div>
         <h3>Dashboard de Testes</h3>
-        <p>65 testes com nome, duração e status. Gerado por jest-html-reporters.</p>
+        <p>84 testes com nome, duração e status. Gerado por jest-html-reporters.</p>
         <div>
           <code style="display:block;margin-top:12px;font-size:11px;color:var(--muted)">npm run test:report</code>
           <span class="open-btn">Abrir →</span>

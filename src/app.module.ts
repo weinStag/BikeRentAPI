@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { GqlThrottlerGuard } from './throttler/gql-throttler.guard';
+import { PricingService } from './rent/service/pricing.service';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { join } from 'path';
@@ -63,6 +67,7 @@ import { TypeModule } from './type/type.module';
       ],
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
+      context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
       // typePaths: ['./**/*.graphql'],
     }),
     BikeModule,
@@ -78,6 +83,7 @@ import { TypeModule } from './type/type.module';
     StationTypeModule,
     TypeModule,
     CryptModule,
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 30 }]),
   ],
   controllers: [],
   providers: [
@@ -105,6 +111,8 @@ import { TypeModule } from './type/type.module';
     StationTypeResolver,
     TypeRepository,
     TypeResolver,
+    PricingService,
+    { provide: APP_GUARD, useClass: GqlThrottlerGuard },
   ],
 })
 export class AppModule {}

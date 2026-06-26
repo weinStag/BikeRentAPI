@@ -32,13 +32,13 @@ export class UserResolver {
   }
 
   @Mutation(() => userSchema)
-  async registerUser(@Args('user', { type: () => userInput }) user: userInput): Promise<void> {
+  async registerUser(@Args('user', { type: () => userInput }) user: userInput): Promise<userSchema> {
     if (await this.userRepository.findByEmail(user.email)) {
       throw new DuplicateUserError();
     }
     const encryptedPassword = await this.crypt.encrypt(user.password);
     user.password = encryptedPassword;
-    await this.userRepository.add(user);
+    return await this.userRepository.add(user);
   }
 
   @Query(() => userSchema)
@@ -53,7 +53,7 @@ export class UserResolver {
     return user;
   }
 
-  @Mutation(() => userSchema)
+  @Mutation(() => userSchema, { nullable: true })
   async removeUserByEmail(@Args('email', { type: () => String }) email: string): Promise<void> {
     await this.findUserByEmail(email);
     if ((await this.rentRepository.findOpenRentsFor(email)).length > 0) throw new UserHasOpenRent();

@@ -6,6 +6,9 @@ import { UserResolver } from 'src/user/user.resolver';
 import { PricingService } from 'src/rent/service/pricing.service';
 import { UnavailableBikeError } from 'src/errors/unavailable-bike-error';
 import { RentNotFoundError } from 'src/errors/rent-not-found-error';
+import { InvalidRatingError } from 'src/errors/invalid-rating-error';
+import { RentStillOpenError } from 'src/errors/rent-still-open-error';
+import { RentAlreadyRatedError } from 'src/errors/rent-already-rated-error';
 import { BikeSchema } from 'src/bike/schema/bike.schema';
 import { RentSchema } from 'src/rent/schema/rent.schema';
 
@@ -182,6 +185,130 @@ describe('RentResolver', () => {
       await resolver.returnBike('user-1', 'bike-1');
 
       expect(callOrder).toEqual(['update', 'price']);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // rateRental — Boundary Value Analysis (BVA) on the 1–5 star rating
+  //
+  // Valid partition  : [1, 5]
+  // Invalid partition: (–∞, 1) ∪ (5, +∞)
+  // Boundaries tested: 0, 0.9, 1 (min), 3 (midpoint), 5 (max), 5.1, 6
+  // Guard conditions : rent not found · rent still open · already rated
+  // ═══════════════════════════════════════════════════════════════════════════
+  describe('rateRental', () => {
+    const makeClosedRent = (ratingValue: number | null = null): Partial<RentSchema> => ({
+      id: 'rent-1',
+      bikeId: 'bike-1',
+      userId: 'user-1',
+      startDate: new Date('2024-01-03T10:00:00Z'),
+      endDate: new Date('2024-01-03T12:00:00Z'),
+      ratingValue,
+      ratingComment: null,
+      bike: makeBike(false) as BikeSchema,
+    });
+
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    // BVA: invalid ratings (below minimum boundary)
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    it('BVA: rating = 0 (below min) → throws InvalidRatingError', async () => {
+      await expect(resolver.rateRental('rent-1', 0, 'ok'))
+        .rejects.toThrow(InvalidRatingError);
+      expect(rentRepository.find).not.toHaveBeenCalled();
+    });
+
+    it('BVA: rating = 0.9 (just below min boundary) → throws InvalidRatingError', async () => {
+      await expect(resolver.rateRental('rent-1', 0.9, 'ok'))
+        .rejects.toThrow(InvalidRatingError);
+      expect(rentRepository.find).not.toHaveBeenCalled();
+    });
+
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    // BVA: valid ratings (on and within boundaries)
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    it('BVA: rating = 1 (min boundary) → succeeds', async () => {
+      const rent = makeClosedRent();
+      (rentRepository.find as jest.Mock).mockResolvedValue(rent);
+      (rentRepository.update as jest.Mock).mockResolvedValue(undefined);
+
+      await resolver.rateRental('rent-1', 1, 'minimum');
+
+      expect(rent.ratingValue).toBe(1);
+      expect(rentRepository.update).toHaveBeenCalledWith(rent);
+    });
+
+    it('BVA: rating = 3 (midpoint) → succeeds', async () => {
+      const rent = makeClosedRent();
+      (rentRepository.find as jest.Mock).mockResolvedValue(rent);
+      (rentRepository.update as jest.Mock).mockResolvedValue(undefined);
+
+      await resolver.rateRental('rent-1', 3, 'average');
+
+      expect(rent.ratingValue).toBe(3);
+    });
+
+    it('BVA: rating = 5 (max boundary) → succeeds', async () => {
+      const rent = makeClosedRent();
+      (rentRepository.find as jest.Mock).mockResolvedValue(rent);
+      (rentRepository.update as jest.Mock).mockResolvedValue(undefined);
+
+      await resolver.rateRental('rent-1', 5, 'excellent');
+
+      expect(rent.ratingValue).toBe(5);
+      expect(rentRepository.update).toHaveBeenCalledWith(rent);
+    });
+
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    // BVA: invalid ratings (above maximum boundary)
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    it('BVA: rating = 5.1 (just above max boundary) → throws InvalidRatingError', async () => {
+      await expect(resolver.rateRental('rent-1', 5.1, 'ok'))
+        .rejects.toThrow(InvalidRatingError);
+    });
+
+    it('BVA: rating = 6 (above max) → throws InvalidRatingError', async () => {
+      await expect(resolver.rateRental('rent-1', 6, 'ok'))
+        .rejects.toThrow(InvalidRatingError);
+    });
+
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    // Guard conditions (domain rules)
+    // — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — — —
+    it('guard: rent does not exist → throws RentNotFoundError', async () => {
+      (rentRepository.find as jest.Mock).mockResolvedValue(null);
+
+      await expect(resolver.rateRental('rent-x', 4, 'nice'))
+        .rejects.toThrow(RentNotFoundError);
+    });
+
+    it('guard: rent has no endDate (still open) → throws RentStillOpenError', async () => {
+      const openRent: Partial<RentSchema> = {
+        id: 'rent-1',
+        endDate: null,
+        ratingValue: null,
+      };
+      (rentRepository.find as jest.Mock).mockResolvedValue(openRent);
+
+      await expect(resolver.rateRental('rent-1', 4, 'nice'))
+        .rejects.toThrow(RentStillOpenError);
+    });
+
+    it('guard: rent already has a rating → throws RentAlreadyRatedError', async () => {
+      const alreadyRated = makeClosedRent(5); // ratingValue = 5
+      (rentRepository.find as jest.Mock).mockResolvedValue(alreadyRated);
+
+      await expect(resolver.rateRental('rent-1', 3, 'change'))
+        .rejects.toThrow(RentAlreadyRatedError);
+    });
+
+    it('guard: saves ratingComment alongside ratingValue', async () => {
+      const rent = makeClosedRent();
+      (rentRepository.find as jest.Mock).mockResolvedValue(rent);
+      (rentRepository.update as jest.Mock).mockResolvedValue(undefined);
+
+      await resolver.rateRental('rent-1', 4, 'great ride!');
+
+      expect(rent.ratingComment).toBe('great ride!');
     });
   });
 });

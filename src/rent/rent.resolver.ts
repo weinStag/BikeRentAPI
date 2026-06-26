@@ -1,11 +1,14 @@
 import { UserResolver } from './../user/user.resolver';
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Float, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { RentInput } from './input/rent.input';
 import { RentRepository } from './repository/rent.repository';
 import { RentSchema } from './schema/rent.schema';
 import { BikeResolver } from 'src/bike/bike.resolver';
 import { UnavailableBikeError } from 'src/errors/unavailable-bike-error';
 import { RentNotFoundError } from 'src/errors/rent-not-found-error';
+import { InvalidRatingError } from 'src/errors/invalid-rating-error';
+import { RentStillOpenError } from 'src/errors/rent-still-open-error';
+import { RentAlreadyRatedError } from 'src/errors/rent-already-rated-error';
 import { PricingService } from './service/pricing.service';
 
 @Resolver()
@@ -53,7 +56,7 @@ export class RentResolver {
     return await this.rentRepository.find(id);
   }
 
-  @Mutation(() => RentSchema)
+  @Mutation(() => RentSchema, { nullable: true })
   async updateRent(@Args('rent', { type: () => RentInput }) rentNew: RentInput): Promise<void> {
     await this.rentRepository.update(rentNew);
   }
@@ -74,8 +77,25 @@ export class RentResolver {
     return await this.rentRepository.list();
   }
 
-  @Mutation(() => RentSchema)
+  @Mutation(() => RentSchema, { nullable: true })
   async removeRentByID(@Args('id', { type: () => String }) id: string): Promise<void> {
     await this.rentRepository.remove(id);
+  }
+
+  @Mutation(() => RentSchema)
+  async rateRental(
+    @Args('rentId', { type: () => String }) rentId: string,
+    @Args('rating', { type: () => Float }) rating: number,
+    @Args('comment', { type: () => String, nullable: true }) comment: string,
+  ): Promise<RentSchema> {
+    if (rating < 1 || rating > 5) throw new InvalidRatingError();
+    const rent = await this.rentRepository.find(rentId);
+    if (!rent) throw new RentNotFoundError();
+    if (!rent.endDate) throw new RentStillOpenError();
+    if (rent.ratingValue !== null && rent.ratingValue !== undefined && rent.ratingValue > 0) throw new RentAlreadyRatedError();
+    rent.ratingValue = rating;
+    rent.ratingComment = comment ?? null;
+    await this.rentRepository.update(rent);
+    return rent;
   }
 }
